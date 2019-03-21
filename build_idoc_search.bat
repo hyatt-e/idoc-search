@@ -1,0 +1,1 @@
+CALL pyinstaller -i C:\Users\ehyatt\Projects\idoc_search\idoc_search_icon.ico --paths C:\Python37\python37.dll --clean C:\Users\ehyatt\Projects\idoc_search\idoc_search.py
