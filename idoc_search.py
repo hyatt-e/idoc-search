@@ -39,7 +39,7 @@ class Search:
     invalidDocs = 0
 
 
-#updated 1/8/19
+# updated 1/8/19
 def future_date_chk(inDate):
     # convert date string into date object
     inDate = datetime.datetime.strptime(inDate, '%m-%d-%Y').date()
@@ -825,6 +825,7 @@ def main_loop(searchStatus, searchMain):
 
         searchMain.paths = create_paths(searchMain)
         searchMain.paths2 = find_dir(searchMain)
+        import ipdb; ipdb.set_trace()  # breakpoint d452cd81 //
         if len(searchMain.paths2) == 0:
             # no files for this range
             searchStatus.error = 6

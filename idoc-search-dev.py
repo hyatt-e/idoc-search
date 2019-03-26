@@ -2,6 +2,8 @@ import datetime
 import os
 from datetime import timedelta
 import pandas
+import setdaterange_EH as dtrng
+import usf997check_EH as usfcheck
 
 # GLOBAL VARIABLES #
 doctype = None
@@ -27,8 +29,7 @@ class Search:
     startDate = ''
     endDate = ''
     searchStr = ''
-    dateRange = None
-    numFiles = 0
+    dateRange = [None, None]
     dirs = []
     paths = []
     paths2 = []
@@ -37,6 +38,7 @@ class Search:
     unknown = {}
     validDocList = {}
     invalidDocs = 0
+    numFiles = 0
 
 
 def future_date_chk(inDate):
@@ -352,42 +354,39 @@ def find_dir(searchMain):
     return paths2
 
 
-def string_search(searchStatus, searchMain):
-    searchStatus.status = 3
-    status_output(searchStatus, searchMain)
+def enter_search(searchStatus):
+    # TODO: remove status_output from functions and place in main flow
+    error = 0
+    search_str = input('').lower()
 
-    searchMain.searchStr = input('').lower()
-    if searchMain.searchStr.lower() == "exit":
+    if search_str.lower() == "exit":
         searchStatus.exit = True
-        searchStatus.error = 000
-        error_msg(searchStatus, searchMain)
-    elif searchMain.searchStr.lower() == "date":
-        restart(searchStatus, searchMain)
+        error = 000
+        return None, error
+    elif search_str.lower() == "date":
+        error = 999
+        return None, error
+    elif search_str == '':
+        error = 5
+        return None, error
+    else:
+        return search_str, error
 
-    elif searchMain.searchStr == '':
-        searchStatus.error = 5
-        error_msg(searchStatus, searchMain)
 
-    searchStatus.status = 4
-    status_output(searchStatus, searchMain)
-
+def search_string(searchStatus, searchMain):
     for path in searchMain.paths2:
-        searchMain.numFiles = searchMain.numFiles + len(os.listdir(path))
+        # Search all dirs within these paths
+        file = open(path)
+        file = file.read().lower()
 
-        for file in os.listdir(path):
-            # Search all dirs within these paths
-            docPath = path + file
-            file = open(docPath)
-            file = file.read().lower()
+        if searchMain.searchStr.lower() in file:
+            matching_lines = []
+            matching_lines = find_lines(file, matching_lines, searchMain)
+            searchMain.validDocList[docPath] = matching_lines
+        else:
+            searchMain.invalidDocs += 1
 
-            if searchMain.searchStr.lower() in file:
-                matching_lines = []
-                matching_lines = find_lines(file, matching_lines, searchMain)
-                searchMain.validDocList[docPath] = matching_lines
-            else:
-                searchMain.invalidDocs += 1
-
-            status_output(searchStatus, searchMain)
+        status_output(searchStatus, searchMain)
 
     return searchMain.invalidDocs, searchMain.validDocList
 
@@ -799,6 +798,13 @@ def error_msg(searchStatus, searchMain):
         else:
             # bad input; repeat message
             error_msg(searchStatus, searchMain)
+    elif searchStatus.error == 999:
+        # Restart with date entry
+        print('Returning to date entry.')
+        os.system("pause")
+        # RESTART
+        restart(searchStatus, searchMain)
+        
 
 
 def main_loop(searchStatus, searchMain):
@@ -815,21 +821,51 @@ def main_loop(searchStatus, searchMain):
               'Please make sure the IntIn directory is located here: {}'
               .format(searchStatus.search_dir))
 
-    if searchStatus.validEndDt is False:
-        searchMain.dateRange, searchMain.startDate, searchMain.endDate = \
-            set_date_rng(searchStatus, searchMain)
-        searchStatus.status = 2
+    # ~~~~~~~~~~ SET DATE RANGE ~~~~~~~~~~ #
+    while (searchMain.dateRange[1] is None):
+        searchStatus.status = 1
         status_output(searchStatus, searchMain)
+        (searchStatus.error, searchMain.dateRange, searchMain.startDate, searchMain.endDate) = \
+            dtrng.set_date_rng(searchMain.dateRange)
 
-        searchMain.paths = create_paths(searchMain)
-        searchMain.paths2 = find_dir(searchMain)
-        if len(searchMain.paths2) == 0:
-            # no files for this range
-            searchStatus.error = 6
-            error_msg(searchStatus, searchMain)
+        # # CHECK ERROR
+        # err_return = error_check(searchInfo)
+        # if err_return == 111:
+        #     return 111
+        # elif err_return == 999:
+        #     return 999
+
+    searchStatus.error, searchMain.paths = usfcheck.create_paths(searchMain.dateRange, searchStatus.search_dir)
+
+    searchMain.numFiles = len(searchMain.paths)
+
+    # if searchStatus.validEndDt is False:
+    #     searchMain.dateRange, searchMain.startDate, searchMain.endDate = \
+    #         set_date_rng(searchStatus, searchMain)
+    #     searchStatus.status = 2
+    #     status_output(searchStatus, searchMain)
+
+    #     searchMain.paths = create_paths(searchMain)
+    #     searchMain.paths2 = find_dir(searchMain)
+    #     if len(searchMain.paths2) == 0:
+    #         # no files for this range
+    #         searchStatus.error = 6
+    #         error_msg(searchStatus, searchMain)
+
+    # ~~~~~~~~~~ ENTER SEARCH TERM ~~~~~~~~~~ #
+    searchStatus.status = 3
+    status_output(searchStatus, searchMain)
+
+    searchMain.searchStr, searchStatus.error = \
+        enter_search(searchStatus)
+
+    # ~~~~~~~~~~ PERFORM SEARCH ~~~~~~~~~~ #
+    import ipdb; ipdb.set_trace()  # breakpoint df414dcc //
+    searchStatus.status = 4
+    status_output(searchStatus, searchMain)
 
     searchMain.invalidDocs, searchMain.validDocList = \
-        string_search(searchStatus, searchMain)
+        search_string(searchStatus, searchMain)
 
     try:
         # create and write to log file
@@ -874,4 +910,5 @@ def main_loop(searchStatus, searchMain):
 # ----- Run ----- #
 searchStatus = Output()
 searchMain = Search()
+import ipdb; ipdb.set_trace()  # breakpoint 0893cf47 //
 main_loop(searchStatus, searchMain)
